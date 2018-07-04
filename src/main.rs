@@ -11,16 +11,21 @@ use std::process::Command;
 use walkdir::WalkDir;
 
 fn main() {
-    let mut bytes_saved = 0;
+    let mut bytes_saved: i64 = 0;
     let args = env::args().skip(1);
     for path in args {
         println!("{}:", path);
-        bytes_saved += process(path);
+        let original_len = fs::metadata(&path).unwrap().len() as i64;
+        process(&path);
+        let optimized_len = fs::metadata(&path).unwrap().len() as i64;
+        bytes_saved += original_len - optimized_len;
+
+        println!();
     }
     println!("{}KiB saved in total.", bytes_saved / 1024);
 }
 
-fn process(path: String) -> u64 {
+fn process(path: &String) {
     println!("Reading ZIP...");
     let file = File::open(&path).unwrap();
     let mut zip = zip::ZipArchive::new(file).unwrap();
@@ -90,6 +95,18 @@ fn process(path: String) -> u64 {
     }
     println!();
 
-    println!();
-    bytes_saved
+    println!("Zipping...");
+    let wd = env::current_dir().unwrap();
+    let path_abs = fs::canonicalize(&path).unwrap();
+
+    let _ = fs::remove_file(&path);
+    env::set_current_dir(&tmp).unwrap();
+    let mut cmd = Command::new("zip");
+    cmd.arg("-9r");
+    cmd.arg(&path_abs);
+    for path in fs::read_dir(".").unwrap() {
+        cmd.arg(path.unwrap().path());
+    }
+    cmd.output().unwrap();
+    env::set_current_dir(wd).unwrap();
 }
