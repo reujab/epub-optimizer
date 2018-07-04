@@ -50,6 +50,7 @@ version = "0.1.0"
 dependencies = [
  "tempfile 3.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "walkdir 2.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "xmltree 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "zip 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -197,6 +198,22 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "xml-rs"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "bitflags 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "xmltree"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "xml-rs 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "zip"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -234,4 +251,6 @@ dependencies = [
 "checksum winapi 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)" = "773ef9dcc5f24b7d850d0ff101e542ff24c3b090a9768e03ff889fdef41f00fd"
 "checksum winapi-i686-pc-windows-gnu 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ac3b87c63620426dd9b991e5ce0329eff545bccbbb34f3be09ff6fb6ab51b7b6"
 "checksum winapi-x86_64-pc-windows-gnu 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
+"checksum xml-rs 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3c1cb601d29fe2c2ac60a2b2e5e293994d87a1f6fa9687a31a15270f909be9c2"
+"checksum xmltree 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ff8eaee9d17062850f1e6163b509947969242990ee59a35801af437abe041e70"
 "checksum zip 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "36b9e08fb518a65cf7e08a1e482573eb87a2f4f8c6619316612a3c1f162fe822"

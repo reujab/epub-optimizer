@@ -6,4 +6,5 @@ authors = ["reujab <reujab@gmail.com>"]
 [dependencies]
 tempfile = "3.0.2"
 walkdir = "2.1.4"
+xmltree = "0.8.0"
 zip = "0.4.2"
