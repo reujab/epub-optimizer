@@ -5,6 +5,7 @@ extern crate zip;
 use std::env;
 use std::fs::File;
 use std::fs;
+use std::io::Write;
 use std::io;
 use std::process::Command;
 use walkdir::WalkDir;
@@ -84,8 +85,10 @@ fn process(path: String) -> u64 {
             _ => {}
         }
         bytes_saved += original_len - entry.metadata().unwrap().len();
+        print!("\r{}KiB saved.", bytes_saved / 1024);
+        io::stdout().flush().unwrap();
     }
-    println!("{}KiB saved.", bytes_saved / 1024);
+    println!();
 
     println!();
     bytes_saved
