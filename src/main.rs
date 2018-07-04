@@ -26,6 +26,12 @@ fn main() {
 }
 
 fn process(path: &String) {
+    let tmp = unzip(&path);
+    minify(&tmp);
+    gen_epub(&path, &tmp);
+}
+
+fn unzip(path: &String) -> tempfile::TempDir {
     println!("Reading ZIP...");
     let file = File::open(&path).unwrap();
     let mut zip = zip::ZipArchive::new(file).unwrap();
@@ -46,6 +52,10 @@ fn process(path: &String) {
         io::copy(&mut input, &mut output).unwrap();
     }
 
+    tmp
+}
+
+fn minify(tmp: &tempfile::TempDir) {
     println!("Minifying files...");
     let mut bytes_saved = 0;
     for entry in WalkDir::new(&tmp) {
@@ -94,7 +104,9 @@ fn process(path: &String) {
         io::stdout().flush().unwrap();
     }
     println!();
+}
 
+fn gen_epub(path: &String, tmp: &tempfile::TempDir) {
     println!("Zipping...");
     let wd = env::current_dir().unwrap();
     let path_abs = fs::canonicalize(&path).unwrap();
