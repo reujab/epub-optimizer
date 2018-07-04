@@ -73,7 +73,14 @@ fn minify(tmp: &tempfile::TempDir) {
 
         let original_len = entry.metadata().unwrap().len();
         match ext.to_str().unwrap() {
-            "html" | "htm" | "css" | "svg" | "xml" => {
+            "opf" | "xml" | "html" | "htm" => {
+                Command::new("minify").
+                    arg("--mime=text/xml").
+                    arg(path).
+                    output().
+                    unwrap();
+            }
+            "css" | "svg" => {
                 Command::new("minify").
                     arg(path).
                     arg("-o").
