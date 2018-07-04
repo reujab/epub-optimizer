@@ -23,13 +23,13 @@ fn process(path: String) {
     let tmp = tempfile::tempdir().unwrap();
     for i in 0..zip.len() {
         let mut input = zip.by_index(i).unwrap();
-        let input_path = input.sanitized_name();
-        if input_path.ends_with("/") {
+        if input.name().ends_with("/") {
             continue;
         }
+        let input_path = input.sanitized_name();
 
         let output_path = tmp.path().join(input_path);
-        fs::create_dir_all(output_path.parent().unwrap()).unwrap();
+        let _ = fs::create_dir_all(output_path.parent().unwrap());
         let mut output = File::create(output_path).unwrap();
 
         io::copy(&mut input, &mut output).unwrap();
