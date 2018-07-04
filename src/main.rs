@@ -22,7 +22,7 @@ fn main() {
 
 fn process(path: String) -> u64 {
     println!("Reading ZIP...");
-    let file = File::open(path).unwrap();
+    let file = File::open(&path).unwrap();
     let mut zip = zip::ZipArchive::new(file).unwrap();
 
     println!("Extracting ZIP...");
