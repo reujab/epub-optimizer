@@ -1,41 +1,75 @@
+extern crate clap;
 extern crate tempfile;
 extern crate walkdir;
 extern crate xmltree;
 extern crate zip;
 
+use clap::App;
+use clap::Arg;
 use std::collections::HashMap;
 use std::env;
-use std::fs::File;
 use std::fs;
+use std::fs::File;
+use std::io;
 use std::io::Read;
 use std::io::Write;
-use std::io;
 use std::process::Command;
 use walkdir::WalkDir;
 
 fn main() {
+    let matches = App::new("epub-optimizer")
+        .about("A command-line app that optimizes and edits metadata of .epub files")
+        .arg(
+            Arg::with_name("no-optimize")
+                .help("Disables optimization")
+                .long("no-optimize"),
+        )
+        .arg(
+            Arg::with_name("metadata")
+                .help("Edits and rewrites the metadata")
+                .long("metadata"),
+        )
+        .arg(
+            Arg::with_name("files")
+                .help("List of files to optimize")
+                .required(true)
+                .min_values(1),
+        )
+        .get_matches();
+
+    let optimize = !matches.is_present("no-optimize");
+    let metadata = matches.is_present("metadata");
+
     let mut bytes_saved: i64 = 0;
-    let args = env::args().skip(1);
-    for path in args {
+    for path in matches.values_of("files").unwrap() {
         println!("{}:", path);
-        let original_len = fs::metadata(&path).unwrap().len() as i64;
-        process(&path);
-        let optimized_len = fs::metadata(&path).unwrap().len() as i64;
+        let original_len = fs::metadata(path).unwrap().len() as i64;
+        process(path, optimize, metadata);
+        let optimized_len = fs::metadata(path).unwrap().len() as i64;
         bytes_saved += original_len - optimized_len;
 
         println!();
     }
-    println!("{}KiB saved in total.", bytes_saved / 1024);
+
+    if optimize {
+        println!("{}KiB saved in total.", bytes_saved / 1024);
+    } else {
+        println!("Done.")
+    }
 }
 
-fn process(path: &String) {
-    let tmp = unzip(&path);
-    mod_metadata(&tmp);
-    minify(&tmp);
-    gen_epub(&path, &tmp);
+fn process(path: &str, optimize: bool, metadata: bool) {
+    let tmp = unzip(path);
+    if metadata {
+        mod_metadata(&tmp);
+    }
+    if optimize {
+        minify(&tmp);
+    }
+    gen_epub(path, &tmp);
 }
 
-fn unzip(path: &String) -> tempfile::TempDir {
+fn unzip(path: &str) -> tempfile::TempDir {
     println!("Reading ZIP...");
     let file = File::open(&path).unwrap();
     let mut zip = zip::ZipArchive::new(file).unwrap();
@@ -72,21 +106,27 @@ struct Metadata {
 
 fn mod_metadata(tmp: &tempfile::TempDir) {
     println!("Rewriting metadata...");
-    let file = File::open(format!("{}/META-INF/container.xml", tmp.path().to_str().unwrap())).unwrap();
+    let file = File::open(format!(
+        "{}/META-INF/container.xml",
+        tmp.path().to_str().unwrap()
+    )).unwrap();
     let doc = xmltree::Element::parse(file).unwrap();
-    let opf = &doc.
-        get_child("rootfiles").unwrap().
-        get_child("rootfile").unwrap().
-        attributes["full-path"];
+    let opf = &doc
+        .get_child("rootfiles")
+        .unwrap()
+        .get_child("rootfile")
+        .unwrap()
+        .attributes["full-path"];
 
     let mut file = File::open(tmp.path().join(&opf)).unwrap();
     let mut buffer = String::new();
     file.read_to_string(&mut buffer).unwrap();
-    let mut doc = xmltree::Element::parse(str::replace(buffer.as_str(), "\u{feff}", "").as_bytes()).unwrap();
+    let mut doc =
+        xmltree::Element::parse(str::replace(buffer.as_str(), "\u{feff}", "").as_bytes()).unwrap();
 
     {
         let metadata_ele = doc.get_mut_child("metadata").unwrap();
-        let mut metadata = Metadata{
+        let mut metadata = Metadata {
             cover_id: String::new(),
 
             language: String::new(),
@@ -98,8 +138,16 @@ fn mod_metadata(tmp: &tempfile::TempDir) {
         };
         for child in &metadata_ele.children {
             if child.name == "meta" {
-                let key = child.attributes.get("name").unwrap_or(&String::new()).clone();
-                let val = child.attributes.get("content").unwrap_or(&String::new()).clone();
+                let key = child
+                    .attributes
+                    .get("name")
+                    .unwrap_or(&String::new())
+                    .clone();
+                let val = child
+                    .attributes
+                    .get("content")
+                    .unwrap_or(&String::new())
+                    .clone();
                 println!("{}: {}={}", child.name, key, val);
 
                 if key == "cover" {
@@ -127,7 +175,8 @@ fn mod_metadata(tmp: &tempfile::TempDir) {
             let mut ele = xmltree::Element::new("meta");
             ele.attributes = HashMap::with_capacity(2);
             ele.attributes.insert("name".to_owned(), "cover".to_owned());
-            ele.attributes.insert("content".to_owned(), metadata.cover_id);
+            ele.attributes
+                .insert("content".to_owned(), metadata.cover_id);
             metadata_ele.children.push(ele);
         }
         fn prompt(dom: &mut xmltree::Element, name: &str, default: String) {
@@ -148,7 +197,15 @@ fn mod_metadata(tmp: &tempfile::TempDir) {
         prompt(metadata_ele, "language", metadata.language);
         prompt(metadata_ele, "title", metadata.title);
         prompt(metadata_ele, "creator", metadata.creator);
-        prompt(metadata_ele, "subject", if metadata.subjects.len() == 0 { String::new() } else { metadata.subjects[0].clone() });
+        prompt(
+            metadata_ele,
+            "subject",
+            if metadata.subjects.len() == 0 {
+                String::new()
+            } else {
+                metadata.subjects[0].clone()
+            },
+        );
         prompt(metadata_ele, "date", metadata.date);
         prompt(metadata_ele, "description", metadata.description);
     }
@@ -176,35 +233,37 @@ fn minify(tmp: &tempfile::TempDir) {
         let original_len = entry.metadata().unwrap().len();
         match ext.to_str().unwrap() {
             "opf" | "xml" | "html" | "htm" => {
-                Command::new("minify").
-                    arg("--mime=text/xml").
-                    arg(path).
-                    output().
-                    unwrap();
+                Command::new("minify")
+                    .arg("--mime=text/xml")
+                    .arg(path)
+                    .output()
+                    .unwrap();
             }
             "css" | "svg" => {
-                Command::new("minify").
-                    arg(path).
-                    arg("-o").
-                    arg(path).
-                    output().
-                    unwrap();
+                Command::new("minify")
+                    .arg(path)
+                    .arg("-o")
+                    .arg(path)
+                    .output()
+                    .unwrap();
             }
             "jpeg" | "jpg" => {
-                Command::new("jpegoptim").
-                    arg("-s").
-                    arg(path).
-                    output().
-                    unwrap();
+                Command::new("jpegoptim")
+                    .arg("-s")
+                    .arg(path)
+                    .output()
+                    .unwrap();
             }
             "png" => {
-                Command::new("crunch").
-                    arg(path).
-                    output().
-                    unwrap();
+                Command::new("crunch").arg(path).output().unwrap();
                 // FIXME when crunch adds an option to overwrite file
                 // https://github.com/chrissimpkins/Crunch/issues/20
-                fs::rename(path.parent().unwrap().join(path.file_stem().unwrap().to_str().unwrap().to_owned() + "-crunch.png"), path).unwrap();
+                fs::rename(
+                    path.parent().unwrap().join(
+                        path.file_stem().unwrap().to_str().unwrap().to_owned() + "-crunch.png",
+                    ),
+                    path,
+                ).unwrap();
             }
             _ => {}
         }
@@ -215,7 +274,7 @@ fn minify(tmp: &tempfile::TempDir) {
     println!();
 }
 
-fn gen_epub(path: &String, tmp: &tempfile::TempDir) {
+fn gen_epub(path: &str, tmp: &tempfile::TempDir) {
     println!("Zipping...");
     let wd = env::current_dir().unwrap();
     let path_abs = fs::canonicalize(&path).unwrap();

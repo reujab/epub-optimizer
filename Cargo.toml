@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["reujab <reujab@gmail.com>"]
 
 [dependencies]
+clap = "2.32"
 tempfile = "3.0.2"
 walkdir = "2.1.4"
 xmltree = "0.8.0"
